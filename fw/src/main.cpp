@@ -15,7 +15,7 @@ u_long volatile prevMilFPS = 0;
 u_long volatile frames, fps = 0;
 const long interval = 500;
 const long second = 1000;
-bool volatile blink, click, printGlue, removeGlue = 0;
+bool volatile blink, click, printGlue, removeGlue, removeGlueHeating, removeGlueEnd = 0;
 double Kp = 2, Ki = 0.2, Kd = 0.5;
 double realTemp, setTemp, outVal;
 int volatile value = 0;
@@ -41,8 +41,8 @@ void motorLoop(){
         digitalWrite(MOT_1A, 1);
         digitalWrite(MOT_1B, 0);
         // ledcWrite(2, movSpeed);
-        digitalWrite(MOT_2A, 1);
-        digitalWrite(MOT_2B, 0);
+        digitalWrite(MOT_2A, 0);
+        digitalWrite(MOT_2B, 1);
     }
 
     if (motorState == -1){       //go backward
@@ -50,8 +50,8 @@ void motorLoop(){
         digitalWrite(MOT_1A, 0);
         digitalWrite(MOT_1B, 1);
         // ledcWrite(2, movSpeed);
-        digitalWrite(MOT_2A, 0);
-        digitalWrite(MOT_2B, 1);
+        digitalWrite(MOT_2A, 1);
+        digitalWrite(MOT_2B, 0);
     }
 }
 
@@ -61,6 +61,26 @@ void menuLoop(){
 
     if (menuItem == 1 && activeItem == 1 && menuSubItem == 1 && click == 1)
         digitalWrite(SHUTDOWN, 0);
+
+    if (menuItem == 2 && activeItem == 1 && menuSubItem == 1 && click == 1){
+        removeGlueHeating = 1;
+        menuSubItem = 0;
+        activeItem = 0;
+        setTemp = 175;
+        return;
+    }
+
+    if (removeGlueHeating == 1 && setTemp <= realTemp){
+        setTemp = 0;
+        removeGlue = 1;
+        removeGlueEnd = 1;
+        removeGlueHeating = 0;
+    }
+
+    if (removeGlueEnd == 1 && click == 1){
+        removeGlueEnd = 0;
+        removeGlue = 0;
+    }
 
     if (click == 1){
     activeItem = !activeItem;
@@ -258,8 +278,25 @@ void showData(){
             disp.drawXbm(75, 32, 32, 24, yes_inv);
         else
             disp.drawXbm(75, 32, 32, 24, yes);
-    }
+        if (removeGlueHeating == 1){
+            disp.clear();
+            disp.setFont(ArialMT_Plain_16);
+            disp.drawString(64, 0, "Zahrátí lepidla");
+            disp.setFont(ArialMT_Plain_24);
+            disp.setTextAlignment(TEXT_ALIGN_RIGHT);
+            disp.drawString(40, 20, String(rTemp));
+            disp.setTextAlignment(TEXT_ALIGN_LEFT);
+            disp.drawString(41, 20, "/175°C");
+        }
 
+        if (removeGlueEnd == 1){
+            disp.clear();
+            disp.setFont(ArialMT_Plain_16);
+            disp.setTextAlignment(TEXT_ALIGN_CENTER);
+            disp.drawString(64, 0, "Ukoncit vysunutí");
+            disp.drawXbm(48, 25, 32, 24, yes_inv);
+        }
+    }
     disp.display();
 }
 
