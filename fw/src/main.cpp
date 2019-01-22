@@ -16,7 +16,7 @@ u_long volatile frames, fps = 0;
 const long interval = 500;
 const long second = 1000;
 bool volatile blink, click, printGlue, removeGlue, removeGlueHeating, removeGlueEnd = 0;
-double Kp = 2, Ki = 0.2, Kd = 0.5;
+double Kp = 2, Ki = 0.2, Kd = 0.7;
 double realTemp, setTemp, outVal;
 int volatile value = 0;
 int volatile menuItem, menuSubItem = 0;
@@ -334,6 +334,18 @@ void initMCU(){
     // ledcAttachPin(MOT_2A, 2);
 }
 
+void setPID(){
+    double gap = abs(setTemp - realTemp);
+    if (gap < 5)
+        heatPID.SetTunings(1, 0.05, 0.25);
+    else   
+        heatPID.SetTunings(2, 0.2, 0.5);
+    heatPID.Compute();
+
+    if (realTemp > setTemp)
+        outVal = 0;
+}
+
 void setup() {
     initMCU();
     digitalWrite(CS_MCP3202, HIGH);
@@ -352,10 +364,16 @@ void loop() {
     readButtons();
     realTemp = measTemp();
 
-    heatPID.Compute();
+    setPID();
     menuLoop();
     showData();
 
     ledcWrite(0, outVal);
     motorLoop();
+
+    Serial.print(realTemp);
+    Serial.print(" ");
+    Serial.print(setTemp);
+    Serial.print(" ");
+    Serial.println(outVal);
 }
